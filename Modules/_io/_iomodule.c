@@ -20,8 +20,8 @@
 #include <sys/stat.h>
 #endif /* HAVE_SYS_STAT_H */
 
-#ifdef MS_WINDOWS
-#include <consoleapi.h>
+#if defined(MS_WINDOWS) && !defined(__MINGW32__)
+#include <windows.h>
 #endif
 
 /* Various interned strings */

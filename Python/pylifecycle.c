@@ -1475,7 +1475,7 @@ Py_FatalError(const char *msg)
 #endif /* MS_WINDOWS */
 
 exit:
-#if defined(MS_WINDOWS) && defined(_DEBUG)
+#if defined(MS_WINDOWS) && !defined(MS_WINDOWS_STORE) && defined(_DEBUG)
     DebugBreak();
 #endif
     abort();

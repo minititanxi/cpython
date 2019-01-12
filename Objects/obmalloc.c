@@ -120,6 +120,19 @@ _PyMem_RawFree(void *ctx, void *ptr)
 
 
 #ifdef MS_WINDOWS
+#ifdef MS_WINDOWS_STORE
+static void *
+_PyObject_ArenaVirtualAlloc(void *ctx, size_t size)
+{
+    return HeapAlloc(GetProcessHeap(), 0, size);
+}
+
+static void
+_PyObject_ArenaVirtualFree(void *ctx, void *ptr, size_t size)
+{
+    HeapFree(GetProcessHeap(), 0, ptr);
+}
+#else
 static void *
 _PyObject_ArenaVirtualAlloc(void *ctx, size_t size)
 {
@@ -132,7 +145,7 @@ _PyObject_ArenaVirtualFree(void *ctx, void *ptr, size_t size)
 {
     VirtualFree(ptr, 0, MEM_RELEASE);
 }
-
+#endif
 #elif defined(ARENAS_USE_MMAP)
 static void *
 _PyObject_ArenaMmap(void *ctx, size_t size)

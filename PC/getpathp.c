@@ -216,6 +216,30 @@ ismodule(wchar_t *filename, int update_filename) /* Is module -- check for .pyc 
    stuff as fits will be appended.
 */
 
+#ifdef MS_WINDOWS_STORE
+
+static void
+join(wchar_t *buffer, const wchar_t *stuff)
+{
+    size_t n;
+    if (is_sep(stuff[0]) ||
+        (wcsnlen_s(stuff, 4) >= 3 && stuff[1] == ':' && is_sep(stuff[2]))) {
+        if (wcscpy_s(buffer, MAXPATHLEN+1, stuff) != 0)
+            Py_FatalError("buffer overflow in getpathp.c's join()");
+        return;
+    }
+
+    n = wcsnlen_s(buffer, MAXPATHLEN+1);
+    if (n > 0 && !is_sep(buffer[n - 1]) && n < MAXPATHLEN) {
+        buffer[n] = SEP;
+        buffer[n + 1] = '\0';
+    }
+    if (wcscat_s(buffer, MAXPATHLEN+1, stuff) != 0)
+        Py_FatalError("buffer overflow in getpathp.c's join()");
+}
+
+#else
+
 static int _PathCchCombineEx_Initialized = 0;
 typedef HRESULT(__stdcall *PPathCchCombineEx)(PWSTR pszPathOut, size_t cchPathOut, PCWSTR pszPathIn, PCWSTR pszMore, unsigned long dwFlags);
 static PPathCchCombineEx _PathCchCombineEx;
@@ -271,6 +295,8 @@ static void canonicalize(wchar_t *buffer, const wchar_t *path)
     }
 }
 
+#endif
+
 /* gotlandmark only called by search_for_prefix, which ensures
    'prefix' is null terminated in bounds.  join() ensures
    'landmark' can not overflow prefix if too long.
@@ -321,6 +347,7 @@ extern const char *PyWin_DLLVersionString;
    in advance.  It could be simplied now Win16/Win32s is dead!
 */
 
+#ifndef MS_WINDOWS_STORE
 static wchar_t *
 getpythonregpath(HKEY keyBase, int skipcore)
 {
@@ -455,6 +482,7 @@ done:
     PyMem_RawFree(keyBuf);
     return retval;
 }
+#endif /* !MS_WINDOWS_STORE */
 #endif /* Py_ENABLE_SHARED */
 
 static void
@@ -465,6 +493,9 @@ get_progpath(void)
     wchar_t *path = _wgetenv(L"PATH");
     wchar_t *prog = Py_GetProgramName();
 
+#if defined(MS_WINDOWS_STORE)
+    dllpath[0] = 0;
+#else
 #ifdef Py_ENABLE_SHARED
     extern HANDLE PyWin_DLLhModule;
     /* static init of progpath ensures final char remains \0 */
@@ -520,6 +551,7 @@ get_progpath(void)
     }
     else
         progpath[0] = '\0';
+#endif
 }
 
 static int
@@ -755,7 +787,7 @@ calculate_path(void)
 
 
     skiphome = pythonhome==NULL ? 0 : 1;
-#ifdef Py_ENABLE_SHARED
+#if defined(Py_ENABLE_SHARED) && !defined(MS_WINDOWS_STORE)
     machinepath = getpythonregpath(HKEY_LOCAL_MACHINE, skiphome);
     userpath = getpythonregpath(HKEY_CURRENT_USER, skiphome);
 #endif
@@ -978,6 +1010,9 @@ static HANDLE hPython3;
 int
 _Py_CheckPython3()
 {
+#ifdef MS_WINDOWS_STORE
+    return 0;
+#else
     wchar_t py3path[MAXPATHLEN+1];
     wchar_t *s;
     if (python3_checked)
@@ -1000,4 +1035,5 @@ _Py_CheckPython3()
     wcscat(py3path, L"\\DLLs\\python3.dll");
     hPython3 = LoadLibraryExW(py3path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
     return hPython3 != NULL;
+#endif
 }

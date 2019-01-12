@@ -105,6 +105,84 @@ PyDoc_STRVAR(PyHKEY_doc,
   The PyHKEY object definition
 
 ************************************************************************/
+#ifdef MS_WINDOWS_STORE
+/* Windows Runtime: provide all functions as not-implemented.  */
+#define _not_implemented(fn) \
+    static PyObject* winreg_##fn(PyObject *self, PyObject *args) { \
+    PyErr_SetExcFromWindowsErr(PyExc_WindowsError, ERROR_ACCESS_DENIED); \
+    return NULL;  \
+    }
+_not_implemented(CloseKey)
+_not_implemented(ConnectRegistry)
+_not_implemented(CreateKey)
+_not_implemented(CreateKeyEx)
+_not_implemented(DeleteKey)
+_not_implemented(DeleteKeyEx)
+_not_implemented(DeleteValue)
+_not_implemented(DisableReflectionKey)
+_not_implemented(EnableReflectionKey)
+_not_implemented(EnumKey)
+_not_implemented(EnumValue)
+_not_implemented(ExpandEnvironmentStrings)
+_not_implemented(FlushKey)
+_not_implemented(LoadKey)
+_not_implemented(OpenKey)
+_not_implemented(OpenKeyEx)
+_not_implemented(QueryValue)
+_not_implemented(QueryValueEx)
+_not_implemented(QueryInfoKey)
+_not_implemented(QueryReflectionKey)
+_not_implemented(SaveKey)
+_not_implemented(SetValue)
+_not_implemented(SetValueEx)
+
+#define WINREG_CLOSEKEY_METHODDEF \
+    {"CloseKey", (PyCFunction)winreg_CloseKey, METH_O, NULL},
+#define WINREG_CONNECTREGISTRY_METHODDEF \
+    {"ConnectRegistry", (PyCFunction)winreg_ConnectRegistry, METH_VARARGS, NULL},
+#define WINREG_CREATEKEY_METHODDEF \
+    {"CreateKey", (PyCFunction)winreg_CreateKey, METH_VARARGS, NULL},
+#define WINREG_CREATEKEYEX_METHODDEF \
+    {"CreateKeyEx", (PyCFunction)winreg_CreateKeyEx, METH_VARARGS|METH_KEYWORDS, NULL},
+#define WINREG_DELETEKEY_METHODDEF \
+    {"DeleteKey", (PyCFunction)winreg_DeleteKey, METH_VARARGS, NULL},
+#define WINREG_DELETEKEYEX_METHODDEF \
+    {"DeleteKeyEx", (PyCFunction)winreg_DeleteKeyEx, METH_VARARGS|METH_KEYWORDS, NULL},
+#define WINREG_DELETEVALUE_METHODDEF \
+    {"DeleteValue", (PyCFunction)winreg_DeleteValue, METH_VARARGS, NULL},
+#define WINREG_DISABLEREFLECTIONKEY_METHODDEF \
+    {"DisableReflectionKey", (PyCFunction)winreg_DisableReflectionKey, METH_O, NULL},
+#define WINREG_ENABLEREFLECTIONKEY_METHODDEF \
+    {"EnableReflectionKey", (PyCFunction)winreg_EnableReflectionKey, METH_O, NULL},
+#define WINREG_ENUMKEY_METHODDEF \
+    {"EnumKey", (PyCFunction)winreg_EnumKey, METH_VARARGS, NULL},
+#define WINREG_ENUMVALUE_METHODDEF \
+    {"EnumValue", (PyCFunction)winreg_EnumValue, METH_VARARGS, NULL},
+#define WINREG_EXPANDENVIRONMENTSTRINGS_METHODDEF \
+    {"ExpandEnvironmentStrings", (PyCFunction)winreg_ExpandEnvironmentStrings, METH_O, NULL},
+#define WINREG_FLUSHKEY_METHODDEF \
+    {"FlushKey", (PyCFunction)winreg_FlushKey, METH_O, NULL},
+#define WINREG_LOADKEY_METHODDEF \
+    {"LoadKey", (PyCFunction)winreg_LoadKey, METH_VARARGS, NULL},
+#define WINREG_OPENKEY_METHODDEF \
+    {"OpenKey", (PyCFunction)winreg_OpenKey, METH_VARARGS|METH_KEYWORDS, NULL},
+#define WINREG_OPENKEYEX_METHODDEF \
+    {"OpenKeyEx", (PyCFunction)winreg_OpenKeyEx, METH_VARARGS|METH_KEYWORDS, NULL},
+#define WINREG_QUERYVALUE_METHODDEF \
+    {"QueryValue", (PyCFunction)winreg_QueryValue, METH_VARARGS, NULL},
+#define WINREG_QUERYVALUEEX_METHODDEF \
+    {"QueryValueEx", (PyCFunction)winreg_QueryValueEx, METH_VARARGS, NULL},
+#define WINREG_QUERYINFOKEY_METHODDEF \
+    {"QueryInfoKey", (PyCFunction)winreg_QueryInfoKey, METH_O, NULL},
+#define WINREG_QUERYREFLECTIONKEY_METHODDEF \
+    {"QueryReflectionKey", (PyCFunction)winreg_QueryReflectionKey, METH_O, NULL},
+#define WINREG_SAVEKEY_METHODDEF \
+    {"SaveKey", (PyCFunction)winreg_SaveKey, METH_VARARGS, NULL},
+#define WINREG_SETVALUE_METHODDEF \
+    {"SetValue", (PyCFunction)winreg_SetValue, METH_VARARGS, NULL},
+#define WINREG_SETVALUEEX_METHODDEF \
+    {"SetValueEx", (PyCFunction)winreg_SetValueEx, METH_VARARGS, NULL},
+#else
 typedef struct {
     PyObject_VAR_HEAD
     HKEY hkey;
@@ -1813,6 +1891,7 @@ winreg_QueryReflectionKey_impl(PyObject *module, HKEY key)
                                                    "RegQueryReflectionKey");
     return PyBool_FromLong(result);
 }
+#endif
 
 static struct PyMethodDef winreg_methods[] = {
     WINREG_CLOSEKEY_METHODDEF
@@ -1861,7 +1940,11 @@ inskey(PyObject * d, char * name, HKEY key)
     Py_XDECREF(v);
 }
 
+#ifdef MS_WINDOWS_STORE
+#define ADD_KEY(val) inskey(d, #val, INVALID_HANDLE_VALUE)
+#else
 #define ADD_KEY(val) inskey(d, #val, val)
+#endif
 
 
 static struct PyModuleDef winregmodule = {
@@ -1883,6 +1966,7 @@ PyMODINIT_FUNC PyInit_winreg(void)
     if (m == NULL)
         return NULL;
     d = PyModule_GetDict(m);
+#ifndef MS_WINDOWS_STORE
     PyHKEY_Type.tp_doc = PyHKEY_doc;
     if (PyType_Ready(&PyHKEY_Type) < 0)
         return NULL;
@@ -1891,6 +1975,7 @@ PyMODINIT_FUNC PyInit_winreg(void)
                              (PyObject *)&PyHKEY_Type) != 0)
         return NULL;
     Py_INCREF(PyExc_OSError);
+#endif
     if (PyDict_SetItemString(d, "error",
                              PyExc_OSError) != 0)
         return NULL;

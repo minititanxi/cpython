@@ -1165,6 +1165,13 @@ PyDoc_STRVAR(get_clock_info_doc,
 \n\
 Get information of the specified clock.");
 
+#ifdef MS_WINDOWS_STORE
+static void tzset()
+{
+    _get_timezone(&timezone);
+}
+#endif
+
 static void
 get_zone(char *zone, int n, struct tm *p)
 {

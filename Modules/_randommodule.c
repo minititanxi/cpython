@@ -71,6 +71,10 @@
 #ifdef HAVE_PROCESS_H
 #  include <process.h>          /* needed for getpid() */
 #endif
+#ifdef MS_WINDOWS_STORE
+#  define WIN32_LEAN_AND_MEAN
+#  include <windows.h>          /* needed for getpid()/GetCurrentProcessId() */
+#endif
 
 /* Period parameters -- These are all magic.  Don't change. */
 #define N 624

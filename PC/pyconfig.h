@@ -14,6 +14,8 @@ the following #defines
 MS_WIN64 - Code specific to the MS Win64 API
 MS_WIN32 - Code specific to the MS Win32 (and Win64) API (obsolete, this covers all supported APIs)
 MS_WINDOWS - Code specific to Windows, but all versions.
+MS_WINDOWS_DESKTOP - Code specific to the MS Windows desktop API
+MS_WINDOWS_STORE - Code specific to the MS Windows store (UWP) API
 Py_ENABLE_SHARED - Code if the Python core is built as a DLL.
 
 Also note that neither "_M_IX86" or "_MSC_VER" should be used for
@@ -46,6 +48,21 @@ WIN32 is still required for the locale module.
 #endif
 #ifndef _CRT_NONSTDC_NO_DEPRECATE
 #define _CRT_NONSTDC_NO_DEPRECATE 1
+#endif
+
+#if (_WIN32_WINNT >= 0x0602 /*_WIN32_WINNT_WIN8*/)
+#	include <winapifamily.h>
+#	if defined(WINAPI_FAMILY)
+#		if WINAPI_FAMILY == WINAPI_FAMILY_DESKTOP_APP
+#			define MS_WINDOWS_DESKTOP
+#		else
+#			define MS_WINDOWS_STORE
+#		endif
+#	else
+#		define MS_WINDOWS_DESKTOP
+#	endif
+#else
+#	define MS_WINDOWS_DESKTOP
 #endif
 
 #define HAVE_IO_H
@@ -511,6 +528,10 @@ Py_NO_ENABLE_SHARED to find out.  Also support MS_NO_COREDLL for b/w compat */
 
 /* Define if you have getpid.  */
 #define HAVE_GETPID
+
+#ifdef MS_WINDOWS_STORE
+#define getpid GetCurrentProcessId
+#endif
 
 /* Define if you have gettimeofday.  */
 /* #undef HAVE_GETTIMEOFDAY */
