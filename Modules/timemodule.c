@@ -1500,6 +1500,13 @@ PyDoc_STRVAR(get_clock_info_doc,
 \n\
 Get information of the specified clock.");
 
+#ifdef MS_WINDOWS_RUNTIME
+static void tzset()
+{
+    _get_timezone(&timezone);
+}
+#endif
+
 #if !defined(HAVE_TZNAME) || defined(__GLIBC__) || defined(__CYGWIN__)
 static void
 get_zone(char *zone, int n, struct tm *p)

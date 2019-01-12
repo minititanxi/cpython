@@ -235,6 +235,30 @@ ismodule(wchar_t *filename, int update_filename)
    stuff as fits will be appended.
 */
 
+#ifdef MS_WINDOWS_RUNTIME
+
+static void
+join(wchar_t *buffer, const wchar_t *stuff)
+{
+    size_t n;
+    if (is_sep(stuff[0]) ||
+        (wcsnlen_s(stuff, 4) >= 3 && stuff[1] == ':' && is_sep(stuff[2]))) {
+        if (wcscpy_s(buffer, MAXPATHLEN+1, stuff) != 0)
+            Py_FatalError("buffer overflow in getpathp.c's join()");
+        return;
+    }
+
+    n = wcsnlen_s(buffer, MAXPATHLEN+1);
+    if (n > 0 && !is_sep(buffer[n - 1]) && n < MAXPATHLEN) {
+        buffer[n] = SEP;
+        buffer[n + 1] = '\0';
+    }
+    if (wcscat_s(buffer, MAXPATHLEN+1, stuff) != 0)
+        Py_FatalError("buffer overflow in getpathp.c's join()");
+}
+
+#else
+
 static int _PathCchCombineEx_Initialized = 0;
 typedef HRESULT(__stdcall *PPathCchCombineEx) (PWSTR pszPathOut, size_t cchPathOut,
                                                PCWSTR pszPathIn, PCWSTR pszMore,
@@ -301,6 +325,7 @@ static _PyInitError canonicalize(wchar_t *buffer, const wchar_t *path)
     return _Py_INIT_OK();
 }
 
+#endif
 
 /* gotlandmark only called by search_for_prefix, which ensures
    'prefix' is null terminated in bounds.  join() ensures
@@ -352,6 +377,7 @@ extern const char *PyWin_DLLVersionString;
    work on Win16, where the buffer sizes werent available
    in advance.  It could be simplied now Win16/Win32s is dead!
 */
+#ifndef MS_WINDOWS_RUNTIME
 static wchar_t *
 getpythonregpath(HKEY keyBase, int skipcore)
 {
@@ -504,6 +530,7 @@ done:
     PyMem_RawFree(keyBuf);
     return retval;
 }
+#endif /* !MS_WINDOWS_RUNTIME */
 #endif /* Py_ENABLE_SHARED */
 
 
@@ -513,6 +540,9 @@ get_dll_path(PyCalculatePath *calculate, _PyPathConfig *config)
     wchar_t dll_path[MAXPATHLEN+1];
     memset(dll_path, 0, sizeof(dll_path));
 
+#if defined(MS_WINDOWS_RUNTIME)
+    dllpath[0] = 0;
+#else
 #ifdef Py_ENABLE_SHARED
     extern HANDLE PyWin_DLLhModule;
     if (PyWin_DLLhModule) {
@@ -529,6 +559,7 @@ get_dll_path(PyCalculatePath *calculate, _PyPathConfig *config)
         return _Py_INIT_NO_MEMORY();
     }
     return _Py_INIT_OK();
+#endif
 }
 
 
@@ -773,7 +804,7 @@ calculate_module_search_path(const _PyCoreConfig *core_config,
                              wchar_t *prefix)
 {
     int skiphome = calculate->home==NULL ? 0 : 1;
-#ifdef Py_ENABLE_SHARED
+#if defined(Py_ENABLE_SHARED) && !defined(MS_WINDOWS_RUNTIME)
     calculate->machine_path = getpythonregpath(HKEY_LOCAL_MACHINE, skiphome);
     calculate->user_path = getpythonregpath(HKEY_CURRENT_USER, skiphome);
 #endif
@@ -1045,6 +1076,9 @@ static HANDLE hPython3;
 int
 _Py_CheckPython3(void)
 {
+#ifdef MS_WINDOWS_RUNTIME
+    return 0;
+#else
     wchar_t py3path[MAXPATHLEN+1];
     wchar_t *s;
     if (python3_checked) {
@@ -1070,4 +1104,5 @@ _Py_CheckPython3(void)
     wcscat(py3path, L"\\DLLs\\python3.dll");
     hPython3 = LoadLibraryExW(py3path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
     return hPython3 != NULL;
+#endif
 }

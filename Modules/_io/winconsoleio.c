@@ -268,6 +268,9 @@ _io__WindowsConsoleIO___init___impl(winconsoleio *self, PyObject *nameobj,
     int rwa = 0;
     int fd = -1;
     int fd_is_own = 0;
+#ifdef MS_WINDOWS_RUNTIME
+    CREATEFILE2_EXTENDED_PARAMETERS param;
+#endif
 
     assert(PyWindowsConsoleIO_Check(self));
     if (self->handle >= 0) {
@@ -368,11 +371,21 @@ _io__WindowsConsoleIO___init___impl(winconsoleio *self, PyObject *nameobj,
            on the specific access. This is required for modern names
            CONIN$ and CONOUT$, which allow reading/writing state as
            well as reading/writing content. */
+#ifdef MS_WINDOWS_RUNTIME
+        ZeroMemory(&param, sizeof(param));
+        param.dwSize = sizeof(param);
+        self->handle = CreateFile2(name, GENERIC_READ | GENERIC_WRITE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE, OPEN_EXISTING, &param);
+        if (self->handle == INVALID_HANDLE_VALUE)
+            self->handle = CreateFile2(name, access,
+                FILE_SHARE_READ | FILE_SHARE_WRITE, OPEN_EXISTING, &param);
+#else
         self->handle = CreateFileW(name, GENERIC_READ | GENERIC_WRITE,
             FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
         if (self->handle == INVALID_HANDLE_VALUE)
             self->handle = CreateFileW(name, access,
                 FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+#endif
         Py_END_ALLOW_THREADS
 
         if (self->handle == INVALID_HANDLE_VALUE) {

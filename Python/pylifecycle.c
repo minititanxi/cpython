@@ -2173,7 +2173,7 @@ fatal_error(const char *prefix, const char *msg, int status)
 
 exit:
     if (status < 0) {
-#if defined(MS_WINDOWS) && defined(_DEBUG)
+#if defined(MS_WINDOWS) && !defined(MS_WINDOWS_RUNTIME) && defined(_DEBUG)
         DebugBreak();
 #endif
         abort();
